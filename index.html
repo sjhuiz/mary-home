@@ -119,6 +119,94 @@
   button.card.show, button.card.done { background: #fff; color: #10243f; box-shadow: var(--shadow); }
   button.card.done { background: #c9d8c4; }
 
+  .picker { display: grid; gap: 0.85rem; }
+  button.tile.pick {
+    min-height: 6.2rem;
+    text-align: left;
+    padding: 0.9rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+  button.tile.pick strong { font-size: clamp(1.7rem, 4vw, 2.4rem); font-weight: 700; }
+  button.tile.pick span { font-size: 1.35rem; }
+
+  .ttt {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    max-width: 34rem;
+  }
+  button.cell {
+    min-height: 6.5rem;
+    font-size: clamp(2.6rem, 8vw, 4.2rem);
+    font-family: inherit;
+    background: #fff;
+    color: #10243f;
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+  }
+  button.cell:disabled { cursor: default; }
+
+  .spell {
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    letter-spacing: 0.12em;
+    min-height: 3.4rem;
+    margin: 0.2rem 0 0.9rem;
+    font-weight: 700;
+  }
+  .letters { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-bottom: 0.8rem; }
+  button.letter {
+    min-width: 4.4rem;
+    min-height: 4.4rem;
+    font-size: 2.1rem;
+    font-family: inherit;
+    background: #fff;
+    color: #10243f;
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+  }
+  button.letter:disabled { background: #e7dfd2; color: transparent; box-shadow: none; cursor: default; }
+  button.letter.shake { animation: shake 0.4s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-10px); }
+    40% { transform: translateX(10px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+  }
+
+  .called { text-align: center; margin: 0.1rem 0 0.8rem; }
+  .called-label { font-size: 1.45rem; }
+  .called-num { font-size: clamp(3rem, 9vw, 4.8rem); font-weight: 700; line-height: 1; }
+  .bingo-head, .bingo {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+  .bingo-head div { text-align: center; font-size: clamp(1.35rem, 3vw, 1.8rem); font-weight: 700; }
+  button.sq {
+    min-height: 3.6rem;
+    font-size: clamp(1.25rem, 3.4vw, 1.85rem);
+    font-family: inherit;
+    background: #fff;
+    color: #10243f;
+    border: 0;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    padding: 0.2rem;
+  }
+  button.sq.mark { background: #c9d8c4; }
+  button.sq.free { background: #f6e39a; }
+  button.sq.shake { animation: shake 0.4s ease; }
+
   .win {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     pointer-events: none; font-size: clamp(3rem, 10vw, 6rem); z-index: 5;
@@ -173,7 +261,17 @@ function tick() {
 tick(); setInterval(tick, 15000);
 
 const home = $("#home"), panel = $("#panel");
-function closePanel() { panel.classList.remove("open"); home.style.display = ""; }
+function closePanel() {
+  panel.classList.remove("open");
+  home.style.display = "";
+  leaveGame();
+}
+function leaveGame() {
+  bingoToken++;
+  const back = $("#back");
+  back.textContent = "Back";
+  back.onclick = closePanel;
+}
 $("#back").onclick = closePanel;
 
 function openPanel(title, lead, body) {
@@ -183,16 +281,71 @@ function openPanel(title, lead, body) {
   if (body) $("#pbody").append(body);
   home.style.display = "none";
   panel.classList.add("open");
+  const back = $("#back");
+  back.textContent = "Back";
+  back.onclick = closePanel;
 }
 
+function celebrate(text) {
+  document.querySelectorAll(".win").forEach((el) => el.remove());
+  const win = document.createElement("div");
+  win.className = "win";
+  const span = document.createElement("span");
+  span.textContent = text;
+  win.append(span);
+  document.body.append(win);
+  setTimeout(() => win.remove(), 2200);
+}
+
+function shuffle(list) {
+  const a = list.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let bingoToken = 0;
+
+function gamesPicker() {
+  bingoToken++;
+  const wrap = document.createElement("div");
+  wrap.className = "picker";
+  const games = [
+    ["Match", "Find the pairs", gameView],
+    ["Tic-tac-toe", "You are X", ticView],
+    ["Word jumble", "Spell a word", jumbleView],
+    ["Bingo", "Mark your card", bingoView]
+  ];
+  games.forEach(([name, hint, open]) => {
+    const b = document.createElement("button");
+    b.className = "tile pick";
+    b.type = "button";
+    const strong = document.createElement("strong");
+    strong.textContent = name;
+    const span = document.createElement("span");
+    span.textContent = hint;
+    b.append(strong, span);
+    b.onclick = open;
+    wrap.append(b);
+  });
+  openPanel("Games", "Pick a game.", wrap);
+  const back = $("#back");
+  back.textContent = "Home";
+  back.onclick = closePanel;
+}
+
+function goGame(title, lead, body) {
+  openPanel(title, lead, body);
+  const back = $("#back");
+  back.textContent = "Games";
+  back.onclick = gamesPicker;
+}
 
 function gameView() {
   const words = ["Sun", "Bird", "Book", "Cake", "Star", "Tree"];
-  let deck = words.concat(words);
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
+  const deck = shuffle(words.concat(words));
   const wrap = document.createElement("div");
   const board = document.createElement("div");
   board.className = "cards";
@@ -203,7 +356,7 @@ function gameView() {
   again.onclick = () => gameView();
   let open = [];
   let lock = false;
-  deck.forEach((word, i) => {
+  deck.forEach((word) => {
     const b = document.createElement("button");
     b.className = "card";
     b.type = "button";
@@ -220,11 +373,7 @@ function gameView() {
         c.classList.add("done");
         if (board.querySelectorAll(".card.done").length === deck.length) {
           $("#plead").textContent = "You found them all.";
-          const win = document.createElement("div");
-          win.className = "win";
-          win.innerHTML = "<span>Nice!</span>";
-          document.body.append(win);
-          setTimeout(() => win.remove(), 2200);
+          celebrate("Nice!");
         }
       } else {
         lock = true;
@@ -238,7 +387,289 @@ function gameView() {
     board.append(b);
   });
   wrap.append(board, again);
-  openPanel("Match", "Tap two cards. Find the pairs.", wrap);
+  goGame("Match", "Tap two cards. Find the pairs.", wrap);
+}
+
+function ticView() {
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const cells = Array(9).fill("");
+  let over = false;
+  let lock = false;
+  const wrap = document.createElement("div");
+  const board = document.createElement("div");
+  board.className = "ttt";
+  const buttons = [];
+  function winner(mark) {
+    return lines.some(([a, b, c]) => cells[a] === mark && cells[b] === mark && cells[c] === mark);
+  }
+  function findMove(mark) {
+    for (let i = 0; i < 9; i++) {
+      if (cells[i]) continue;
+      cells[i] = mark;
+      const hit = winner(mark);
+      cells[i] = "";
+      if (hit) return i;
+    }
+    return -1;
+  }
+  function finish(text, lead) {
+    over = true;
+    lock = true;
+    $("#plead").textContent = lead;
+    celebrate(text);
+  }
+  function paint() {
+    buttons.forEach((b, i) => { b.textContent = cells[i]; });
+  }
+  function cpu() {
+    if (over) return;
+    const empties = cells.map((v, i) => v ? -1 : i).filter((i) => i >= 0);
+    if (!empties.length) return;
+    const winAt = findMove("O");
+    const blockAt = findMove("X");
+    let pick = -1;
+    if (winAt >= 0 && Math.random() < 0.45) pick = winAt;
+    else if (blockAt >= 0 && Math.random() < 0.35) pick = blockAt;
+    else if (!cells[4] && Math.random() < 0.4) pick = 4;
+    if (pick < 0 || cells[pick]) pick = empties[Math.floor(Math.random() * empties.length)];
+    cells[pick] = "O";
+    paint();
+    if (winner("O")) finish("Nice try", "I got three. Play again whenever you like.");
+    else if (cells.every(Boolean)) finish("It's a tie", "Nobody got three. A fair game.");
+    else lock = false;
+  }
+  for (let i = 0; i < 9; i++) {
+    const b = document.createElement("button");
+    b.className = "cell";
+    b.type = "button";
+    b.onclick = () => {
+      if (over || lock || cells[i]) return;
+      cells[i] = "X";
+      paint();
+      if (winner("X")) { finish("You win!", "You got three in a row."); return; }
+      if (cells.every(Boolean)) { finish("It's a tie", "Nobody got three. A fair game."); return; }
+      lock = true;
+      setTimeout(cpu, 700);
+    };
+    buttons.push(b);
+    board.append(b);
+  }
+  const again = document.createElement("button");
+  again.className = "choice";
+  again.type = "button";
+  again.textContent = "New game";
+  again.onclick = () => ticView();
+  wrap.append(board, again);
+  goGame("Tic-tac-toe", "You are X. Tap a square.", wrap);
+}
+
+const JUMBLE = ["garden", "family", "cookie", "sunday", "flower", "letter", "apple", "butter", "window", "kitten", "summer", "friend", "pillow", "orange", "pencil", "mother", "happy", "music", "river", "picnic", "candle", "bread", "yellow", "winter", "spring"];
+let jumbleLast = "";
+
+function jumbleView(forceWord) {
+  let word = forceWord;
+  if (!word) {
+    let guard = 0;
+    do {
+      word = JUMBLE[Math.floor(Math.random() * JUMBLE.length)];
+      guard++;
+    } while (word === jumbleLast && guard < 12);
+  }
+  jumbleLast = word;
+  let progress = 0;
+  let solved = false;
+  const wrap = document.createElement("div");
+  const spell = document.createElement("div");
+  spell.className = "spell";
+  const note = document.createElement("p");
+  note.className = "lead";
+  const letters = document.createElement("div");
+  letters.className = "letters";
+  function showSpell() {
+    spell.textContent = word.split("").map((ch, i) => (i < progress ? ch.toUpperCase() : "·")).join(" ");
+  }
+  showSpell();
+  let bank = word.split("");
+  let mixed = shuffle(bank);
+  if (mixed.join("") === word) mixed = shuffle(bank);
+  mixed.forEach((ch) => {
+    const b = document.createElement("button");
+    b.className = "letter";
+    b.type = "button";
+    b.textContent = ch.toUpperCase();
+    b.onclick = () => {
+      if (solved || b.disabled) return;
+      if (ch === word[progress]) {
+        b.disabled = true;
+        progress++;
+        note.textContent = "";
+        showSpell();
+        if (progress === word.length) {
+          solved = true;
+          spell.textContent = word.toUpperCase().split("").join(" ");
+          $("#plead").textContent = "You spelled it.";
+          celebrate("Nice!");
+          next.style.display = "";
+        }
+      } else {
+        note.textContent = "Try again";
+        b.classList.remove("shake");
+        void b.offsetWidth;
+        b.classList.add("shake");
+      }
+    };
+    letters.append(b);
+  });
+  const row = document.createElement("div");
+  row.className = "row";
+  const again = document.createElement("button");
+  again.className = "choice";
+  again.type = "button";
+  again.textContent = "New word";
+  again.onclick = () => jumbleView();
+  const next = document.createElement("button");
+  next.className = "go";
+  next.type = "button";
+  next.textContent = "Next word";
+  next.style.display = "none";
+  next.onclick = () => jumbleView();
+  row.append(again, next);
+  wrap.append(spell, letters, note, row);
+  goGame("Word jumble", "Tap the letters in order.", wrap);
+}
+
+function bingoCard() {
+  const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+  const card = [];
+  for (let c = 0; c < 5; c++) {
+    const [lo, hi] = ranges[c];
+    const nums = shuffle(Array.from({length: hi - lo + 1}, (_, i) => lo + i));
+    let k = 0;
+    for (let r = 0; r < 5; r++) {
+      if (!card[r]) card[r] = [];
+      if (r === 2 && c === 2) card[r][c] = null;
+      else card[r][c] = nums[k++];
+    }
+  }
+  return card;
+}
+
+function bingoView() {
+  const token = ++bingoToken;
+  const card = bingoCard();
+  const marked = Array.from({length: 5}, () => Array(5).fill(false));
+  marked[2][2] = true;
+  const pool = [];
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      if (card[r][c] != null) pool.push({ r, c, n: card[r][c] });
+    }
+  }
+  const calls = shuffle(pool);
+  let callAt = 0;
+  let over = false;
+  let wait = false;
+  const wrap = document.createElement("div");
+  const called = document.createElement("div");
+  called.className = "called";
+  const label = document.createElement("div");
+  label.className = "called-label";
+  label.textContent = "Called";
+  const num = document.createElement("div");
+  num.className = "called-num";
+  called.append(label, num);
+  const note = document.createElement("p");
+  note.className = "lead";
+  note.textContent = "Tap that number on your card.";
+  const head = document.createElement("div");
+  head.className = "bingo-head";
+  "BINGO".split("").forEach((ch) => {
+    const d = document.createElement("div");
+    d.textContent = ch;
+    head.append(d);
+  });
+  const board = document.createElement("div");
+  board.className = "bingo";
+  const squares = [];
+  function current() { return calls[callAt]; }
+  function showCall() {
+    const cur = current();
+    num.textContent = cur ? String(cur.n) : "—";
+  }
+  function hasLine() {
+    const rows = [];
+    for (let i = 0; i < 5; i++) {
+      const row = [];
+      const col = [];
+      for (let j = 0; j < 5; j++) {
+        row.push(marked[i][j]);
+        col.push(marked[j][i]);
+      }
+      rows.push(row.every(Boolean), col.every(Boolean));
+    }
+    const d1 = [0,1,2,3,4].every((i) => marked[i][i]);
+    const d2 = [0,1,2,3,4].every((i) => marked[i][4 - i]);
+    return rows.some(Boolean) || d1 || d2;
+  }
+  function advance() {
+    if (token !== bingoToken || over) return;
+    callAt++;
+    wait = false;
+    if (callAt >= calls.length) {
+      note.textContent = "That was the whole card.";
+      num.textContent = "—";
+      return;
+    }
+    showCall();
+    note.textContent = "Tap that number on your card.";
+  }
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const b = document.createElement("button");
+      b.className = "sq";
+      b.type = "button";
+      if (card[r][c] == null) {
+        b.textContent = "Free";
+        b.classList.add("free", "mark");
+        b.disabled = true;
+      } else {
+        b.textContent = String(card[r][c]);
+        b.onclick = () => {
+          if (over || wait || marked[r][c]) return;
+          const cur = current();
+          if (!cur || card[r][c] !== cur.n) {
+            note.textContent = "Try again";
+            b.classList.remove("shake");
+            void b.offsetWidth;
+            b.classList.add("shake");
+            return;
+          }
+          marked[r][c] = true;
+          b.classList.add("mark");
+          if (hasLine()) {
+            over = true;
+            $("#plead").textContent = "You got a line.";
+            note.textContent = "A whole line.";
+            celebrate("Nice!");
+            return;
+          }
+          wait = true;
+          note.textContent = "Good.";
+          setTimeout(advance, 1600);
+        };
+      }
+      squares.push(b);
+      board.append(b);
+    }
+  }
+  showCall();
+  const again = document.createElement("button");
+  again.className = "choice";
+  again.type = "button";
+  again.textContent = "New card";
+  again.onclick = () => bingoView();
+  wrap.append(called, note, head, board, again);
+  goGame("Bingo", "One number at a time. Tap it when you see it.", wrap);
 }
 
 function soon(name) {
@@ -385,7 +816,7 @@ $("#grid").onclick = (e) => {
   const name = b.textContent;
   const v = b.dataset.view;
   if (v === "remember") notesView();
-  else if (v === "game") gameView();
+  else if (v === "game") gamesPicker();
   else if (v === "ask") askView();
   else soon(name);
 };
