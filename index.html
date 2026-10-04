@@ -12,6 +12,7 @@
     --shadow: 0 10px 28px rgba(16, 36, 63, 0.08);
   }
   * { box-sizing: border-box; }
+  button { touch-action: manipulation; user-select: none; }
   html, body { margin: 0; height: 100%; }
   body {
     font-family: Georgia, "Iowan Old Style", Palatino, serif;
@@ -207,6 +208,122 @@
   button.sq.free { background: #f6e39a; }
   button.sq.shake { animation: shake 0.4s ease; }
 
+
+  .mj-board {
+    position: relative;
+    width: min(100%, 36rem);
+    height: 22rem;
+    margin: 0.2rem auto 0.8rem;
+  }
+  button.mj {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.05rem;
+    border: 2px solid rgba(16, 36, 63, 0.28);
+    border-radius: 0.75rem;
+    background: #fffdf8;
+    color: #10243f;
+    box-shadow: var(--shadow);
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0.1rem;
+  }
+  button.mj .mj-g { font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1; }
+  button.mj .mj-n { font-size: clamp(1.05rem, 2.5vw, 1.3rem); line-height: 1.05; }
+  button.mj.picked { outline: 4px solid #b4533a; outline-offset: 1px; }
+
+  .sol-top, .sol-cols {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.32rem;
+    width: min(100%, 52rem);
+  }
+  .sol-cols { margin-top: 0.7rem; align-items: start; }
+  .sol-col { display: flex; flex-direction: column; min-height: 5rem; }
+  button.sol-card, button.sol-slot, button.sol-draw {
+    font-family: inherit;
+    border-radius: 0.65rem;
+    cursor: pointer;
+    padding: 0.22rem 0.18rem 0.28rem;
+  }
+  button.sol-card {
+    min-height: 5.15rem;
+    border: 0;
+    background: #fff;
+    box-shadow: var(--shadow);
+    text-align: left;
+    line-height: 1;
+  }
+  button.sol-card.down {
+    min-height: 0.95rem;
+    background: #10243f;
+    box-shadow: none;
+    color: transparent;
+    padding: 0;
+  }
+  button.sol-card.red { color: #9d1c1c; }
+  button.sol-card.black { color: #10243f; }
+  button.sol-card.picked { outline: 4px solid #b4533a; outline-offset: 1px; }
+  .sol-rank { font-size: clamp(1.05rem, 2.5vw, 1.4rem); font-weight: 700; line-height: 1.05; }
+  .sol-suit { font-size: clamp(1.3rem, 3.2vw, 1.9rem); line-height: 1; text-align: center; margin-top: 0.12rem; }
+  button.sol-slot {
+    min-height: 5.15rem;
+    border: 2px dashed rgba(16, 36, 63, 0.4);
+    background: transparent;
+    color: #10243f;
+    font-size: 1.2rem;
+  }
+  button.sol-draw {
+    min-height: 5.15rem;
+    border: 0;
+    background: #10243f;
+    color: #fff;
+    font-size: 1.3rem;
+  }
+
+  .blk-grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 0.28rem;
+    width: min(100%, 34rem);
+  }
+  button.blk {
+    aspect-ratio: 1;
+    min-height: 2.15rem;
+    border: 0;
+    border-radius: 0.4rem;
+    background: #fff;
+    box-shadow: 0 3px 8px rgba(16, 36, 63, 0.08);
+    padding: 0;
+    cursor: pointer;
+  }
+  .blk-pieces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin: 0.95rem 0 0.3rem;
+    align-items: flex-end;
+  }
+  button.blk-piece {
+    background: #fff;
+    border-radius: 0.9rem;
+    border: 4px solid transparent;
+    box-shadow: var(--shadow);
+    padding: 0.6rem;
+    cursor: pointer;
+    font-family: inherit;
+    min-width: 6rem;
+    min-height: 6rem;
+  }
+  button.blk-piece.picked { border-color: #b4533a; }
+  .blk-mini { display: grid; gap: 0.22rem; }
+  .blk-dot { width: 2.15rem; height: 2.15rem; border-radius: 0.32rem; background: transparent; }
+  .blk-dot.on { background: var(--fill, #e0b15a); }
+  .blk-empty { min-width: 6rem; min-height: 6rem; }
+
   .win {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     pointer-events: none; font-size: clamp(3rem, 10vw, 6rem); z-index: 5;
@@ -306,6 +423,102 @@ function shuffle(list) {
   return a;
 }
 
+
+function mjOverlaps(a, b) {
+  return a.x < b.x + 2 && a.x + 2 > b.x && a.y < b.y + 2 && a.y + 2 > b.y;
+}
+function mjIsFree(tile, tiles) {
+  if (tile.gone) return false;
+  let left = false;
+  let right = false;
+  for (const other of tiles) {
+    if (other === tile || other.gone) continue;
+    if (other.z > tile.z && mjOverlaps(other, tile)) return false;
+    if (other.z !== tile.z) continue;
+    const yOverlap = tile.y < other.y + 2 && tile.y + 2 > other.y;
+    if (!yOverlap) continue;
+    if (other.x + 2 === tile.x) left = true;
+    if (tile.x + 2 === other.x) right = true;
+  }
+  return !left || !right;
+}
+function mjLayout() {
+  const pos = [];
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 5; c++) pos.push({ x: c * 2, y: r * 2, z: 0 });
+  }
+  for (let r = 0; r < 2; r++) {
+    for (let c = 0; c < 4; c++) pos.push({ x: 1 + c * 2, y: 1 + r * 2, z: 1 });
+  }
+  pos.push({ x: 4, y: 2, z: 2 });
+  return pos;
+}
+function solIsRed(card) {
+  return card.s === 1 || card.s === 3;
+}
+function solCanPlaceTableau(card, top) {
+  if (!card) return false;
+  if (!top) return card.r === 12;
+  if (!top.up) return false;
+  return solIsRed(card) !== solIsRed(top) && card.r === top.r - 1;
+}
+function solCanPlaceFound(card, pile) {
+  if (!card) return false;
+  if (!pile.length) return card.r === 0;
+  const top = pile[pile.length - 1];
+  return card.s === top.s && card.r === top.r + 1;
+}
+function solRunOk(cards) {
+  if (!cards.length || !cards[0].up) return false;
+  for (let i = 0; i < cards.length - 1; i++) {
+    const a = cards[i];
+    const b = cards[i + 1];
+    if (!b.up) return false;
+    if (solIsRed(a) === solIsRed(b)) return false;
+    if (a.r !== b.r + 1) return false;
+  }
+  return true;
+}
+function blockFitsAt(grid, shape, ar, ac) {
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (!shape[r][c]) continue;
+      const rr = ar + r;
+      const cc = ac + c;
+      if (rr < 0 || cc < 0 || rr >= 8 || cc >= 8) return false;
+      if (grid[rr][cc]) return false;
+    }
+  }
+  return true;
+}
+function blockAnyFit(grid, shape) {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      if (blockFitsAt(grid, shape, r, c)) return true;
+    }
+  }
+  return false;
+}
+function blockClearLines(grid) {
+  const rows = [];
+  const cols = [];
+  for (let r = 0; r < 8; r++) {
+    if (grid[r].every((v) => v)) rows.push(r);
+  }
+  for (let c = 0; c < 8; c++) {
+    let full = true;
+    for (let r = 0; r < 8; r++) if (!grid[r][c]) full = false;
+    if (full) cols.push(c);
+  }
+  if (!rows.length && !cols.length) return 0;
+  const wipe = grid.map((row) => row.slice());
+  for (const r of rows) for (let c = 0; c < 8; c++) wipe[r][c] = 0;
+  for (const c of cols) for (let r = 0; r < 8; r++) wipe[r][c] = 0;
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) grid[r][c] = wipe[r][c];
+  return rows.length + cols.length;
+}
+
+
 let bingoToken = 0;
 
 function gamesPicker() {
@@ -316,7 +529,10 @@ function gamesPicker() {
     ["Match", "Find the pairs", gameView],
     ["Tic-tac-toe", "You are X", ticView],
     ["Word jumble", "Spell a word", jumbleView],
-    ["Bingo", "Mark your card", bingoView]
+    ["Bingo", "Mark your card", bingoView],
+    ["Tiles", "Match free tiles", tilesView],
+    ["Solitaire", "One card at a time", solView],
+    ["Blocks", "Fill rows and columns", blocksView]
   ];
   games.forEach(([name, hint, open]) => {
     const b = document.createElement("button");
@@ -467,7 +683,7 @@ const JUMBLE = ["garden", "family", "cookie", "sunday", "flower", "letter", "app
 let jumbleLast = "";
 
 function jumbleView(forceWord) {
-  let word = forceWord;
+  let word = typeof forceWord === "string" ? forceWord.toLowerCase() : "";
   if (!word) {
     let guard = 0;
     do {
@@ -492,14 +708,16 @@ function jumbleView(forceWord) {
   let bank = word.split("");
   let mixed = shuffle(bank);
   if (mixed.join("") === word) mixed = shuffle(bank);
-  mixed.forEach((ch) => {
+  const slots = mixed.map((ch) => ({ ch: ch, used: false }));
+  slots.forEach((slot) => {
     const b = document.createElement("button");
     b.className = "letter";
     b.type = "button";
-    b.textContent = ch.toUpperCase();
+    b.textContent = slot.ch.toUpperCase();
     b.onclick = () => {
-      if (solved || b.disabled) return;
-      if (ch === word[progress]) {
+      if (solved || slot.used) return;
+      if (slot.ch === word[progress]) {
+        slot.used = true;
         b.disabled = true;
         progress++;
         note.textContent = "";
@@ -670,6 +888,498 @@ function bingoView() {
   again.onclick = () => bingoView();
   wrap.append(called, note, head, board, again);
   goGame("Bingo", "One number at a time. Tap it when you see it.", wrap);
+}
+
+
+const MJ_GLYPH = { Flower: "🌸", Bird: "🐦", Moon: "🌙", Sun: "☀️", Star: "⭐", Leaf: "🍃" };
+
+function tilesView() {
+  const kinds = ["Flower", "Bird", "Moon", "Sun", "Star", "Leaf"];
+  const bag = [];
+  kinds.forEach((k) => { for (let i = 0; i < 4; i++) bag.push(k); });
+  const dealt = shuffle(bag);
+  const tiles = mjLayout().map((p, i) => ({ x: p.x, y: p.y, z: p.z, sym: dealt[i], gone: false }));
+  let first = null;
+  const wrap = document.createElement("div");
+  const board = document.createElement("div");
+  board.className = "mj-board";
+  const note = document.createElement("p");
+  note.className = "lead";
+  const again = document.createElement("button");
+  again.className = "choice";
+  again.type = "button";
+  again.textContent = "New game";
+  again.onclick = () => tilesView();
+  function paint() {
+    board.textContent = "";
+    const draw = tiles.filter((t) => !t.gone).slice().sort((a, b) => a.z - b.z || a.y - b.y || a.x - b.x);
+    draw.forEach((tile) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "mj" + (tile === first ? " picked" : "");
+      b.style.left = (tile.x / 10 * 100) + "%";
+      b.style.top = (tile.y / 6 * 100) + "%";
+      b.style.width = (2 / 10 * 100) + "%";
+      b.style.height = (2 / 6 * 100) + "%";
+      b.style.zIndex = String(2 + tile.z);
+      const free = mjIsFree(tile, tiles);
+      if (!free) b.style.opacity = "0.72";
+      b.dataset.x = String(tile.x);
+      b.dataset.y = String(tile.y);
+      b.dataset.z = String(tile.z);
+      b.dataset.sym = tile.sym;
+      const g = document.createElement("div");
+      g.className = "mj-g";
+      g.textContent = MJ_GLYPH[tile.sym];
+      const n = document.createElement("div");
+      n.className = "mj-n";
+      n.textContent = tile.sym;
+      b.append(g, n);
+      b.onclick = () => {
+        if (tile.gone) return;
+        if (!mjIsFree(tile, tiles)) {
+          note.textContent = "That one is covered.";
+          return;
+        }
+        if (!first) {
+          first = tile;
+          note.textContent = "";
+          paint();
+          return;
+        }
+        if (first === tile) {
+          first = null;
+          note.textContent = "";
+          paint();
+          return;
+        }
+        if (first.sym === tile.sym && mjIsFree(first, tiles)) {
+          first.gone = true;
+          tile.gone = true;
+          first = null;
+          note.textContent = "";
+          paint();
+          if (tiles.every((t) => t.gone)) {
+            $("#plead").textContent = "You cleared the board.";
+            celebrate("Nice!");
+          }
+          return;
+        }
+        first = tile;
+        note.textContent = "";
+        paint();
+      };
+      board.append(b);
+    });
+  }
+  paint();
+  wrap.append(board, note, again);
+  goGame("Tiles", "Tap two matching tiles that are free.", wrap);
+}
+
+function solView() {
+  const SUITS = ["♠", "♥", "♣", "♦"];
+  const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  const deck = [];
+  for (let s = 0; s < 4; s++) {
+    for (let r = 0; r < 13; r++) deck.push({ r: r, s: s, up: false });
+  }
+  const shuffled = shuffle(deck);
+  const stock = [];
+  const waste = [];
+  const found = [[], [], [], []];
+  const tableau = [[], [], [], [], [], [], []];
+  for (let c = 0; c < 7; c++) {
+    for (let i = 0; i <= c; i++) {
+      const card = shuffled.pop();
+      card.up = i === c;
+      tableau[c].push(card);
+    }
+  }
+  while (shuffled.length) stock.push(shuffled.pop());
+  let sel = null;
+  let won = false;
+  const wrap = document.createElement("div");
+  const note = document.createElement("p");
+  note.className = "lead";
+  const board = document.createElement("div");
+  const again = document.createElement("button");
+  again.className = "choice";
+  again.type = "button";
+  again.textContent = "New game";
+  again.onclick = () => solView();
+
+  function selectedCards() {
+    if (!sel) return null;
+    if (sel.kind === "waste") {
+      if (!waste.length) return null;
+      return [waste[waste.length - 1]];
+    }
+    if (sel.kind === "found") {
+      const pile = found[sel.fi];
+      if (!pile.length) return null;
+      return [pile[pile.length - 1]];
+    }
+    const col = tableau[sel.col];
+    if (sel.index < 0 || sel.index >= col.length) return null;
+    const cards = col.slice(sel.index);
+    if (!solRunOk(cards)) return null;
+    return cards;
+  }
+  function takeSel() {
+    if (sel.kind === "waste") return [waste.pop()];
+    if (sel.kind === "found") return [found[sel.fi].pop()];
+    const cards = tableau[sel.col].splice(sel.index);
+    const col = tableau[sel.col];
+    if (col.length && !col[col.length - 1].up) col[col.length - 1].up = true;
+    return cards;
+  }
+  function checkWin() {
+    if (won) return;
+    if (found.every((p) => p.length === 13)) {
+      won = true;
+      $("#plead").textContent = "All the cards are home.";
+      celebrate("Nice!");
+    }
+  }
+  function cardButton(card, picked, margin, onClick) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sol-card " + (card.up ? (solIsRed(card) ? "red" : "black") : "down");
+    if (picked) b.className += " picked";
+    b.dataset.rank = String(card.r);
+    b.dataset.suit = String(card.s);
+    b.dataset.up = card.up ? "1" : "0";
+    b.style.marginTop = margin;
+    if (card.up) {
+      const rank = document.createElement("div");
+      rank.className = "sol-rank";
+      rank.textContent = RANKS[card.r] + SUITS[card.s];
+      const suit = document.createElement("div");
+      suit.className = "sol-suit";
+      suit.textContent = SUITS[card.s];
+      b.append(rank, suit);
+    }
+    b.onclick = onClick;
+    return b;
+  }
+  function onDraw() {
+    if (won) return;
+    sel = null;
+    if (stock.length) {
+      const c = stock.pop();
+      c.up = true;
+      waste.push(c);
+      note.textContent = "";
+    } else if (waste.length) {
+      const rebuilt = [];
+      while (waste.length) {
+        const c = waste.pop();
+        c.up = false;
+        rebuilt.push(c);
+      }
+      while (rebuilt.length) stock.push(rebuilt.shift());
+      note.textContent = "";
+    }
+    paint();
+  }
+  function onWaste() {
+    if (won || !waste.length) return;
+    if (sel && sel.kind === "waste") sel = null;
+    else sel = { kind: "waste" };
+    note.textContent = "";
+    paint();
+  }
+  function onEmpty(colIndex) {
+    if (won) return;
+    const moving = selectedCards();
+    if (moving && solCanPlaceTableau(moving[0], null) && !(sel.kind === "tab" && sel.col === colIndex)) {
+      const cards = takeSel();
+      tableau[colIndex].push(...cards);
+      sel = null;
+      note.textContent = "";
+      checkWin();
+      paint();
+      return;
+    }
+    if (moving) note.textContent = "Only a king can go there.";
+  }
+  function onCard(colIndex, index) {
+    if (won) return;
+    const col = tableau[colIndex];
+    const card = col[index];
+    const moving = selectedCards();
+    const landing = index === col.length - 1;
+    const same = sel && sel.kind === "tab" && sel.col === colIndex;
+    if (moving && landing && card.up && !same && solCanPlaceTableau(moving[0], card)) {
+      const cards = takeSel();
+      col.push(...cards);
+      sel = null;
+      note.textContent = "";
+      checkWin();
+      paint();
+      return;
+    }
+    if (!card.up) return;
+    const run = col.slice(index);
+    if (!solRunOk(run)) {
+      note.textContent = "That move does not fit.";
+      return;
+    }
+    if (same && sel.index === index) sel = null;
+    else sel = { kind: "tab", col: colIndex, index: index };
+    note.textContent = "";
+    paint();
+  }
+  function onFound(fi) {
+    if (won) return;
+    const moving = selectedCards();
+    const same = sel && sel.kind === "found" && sel.fi === fi;
+    if (moving && moving.length === 1 && !same && solCanPlaceFound(moving[0], found[fi])) {
+      const card = takeSel()[0];
+      found[fi].push(card);
+      sel = null;
+      note.textContent = "";
+      checkWin();
+      paint();
+      return;
+    }
+    if (!found[fi].length) {
+      if (moving) note.textContent = "That move does not fit.";
+      return;
+    }
+    if (same) sel = null;
+    else sel = { kind: "found", fi: fi };
+    note.textContent = "";
+    paint();
+  }
+  function paint() {
+    board.textContent = "";
+    const top = document.createElement("div");
+    top.className = "sol-top";
+    const draw = document.createElement("button");
+    draw.type = "button";
+    draw.className = "sol-draw";
+    draw.dataset.act = "draw";
+    draw.textContent = stock.length ? "Draw" : (waste.length ? "Turn" : "Done");
+    draw.onclick = onDraw;
+    top.append(draw);
+    if (waste.length) {
+      const c = waste[waste.length - 1];
+      const w = cardButton(c, !!(sel && sel.kind === "waste"), "0", onWaste);
+      w.dataset.act = "waste";
+      top.append(w);
+    } else {
+      const empty = document.createElement("button");
+      empty.type = "button";
+      empty.className = "sol-slot";
+      empty.textContent = "";
+      empty.dataset.act = "waste-empty";
+      top.append(empty);
+    }
+    const spacer = document.createElement("div");
+    top.append(spacer);
+    for (let fi = 0; fi < 4; fi++) {
+      const pile = found[fi];
+      if (!pile.length) {
+        const slot = document.createElement("button");
+        slot.type = "button";
+        slot.className = "sol-slot";
+        slot.textContent = "Ace";
+        slot.dataset.found = String(fi);
+        slot.onclick = () => onFound(fi);
+        top.append(slot);
+      } else {
+        const c = pile[pile.length - 1];
+        const fb = cardButton(c, !!(sel && sel.kind === "found" && sel.fi === fi), "0", () => onFound(fi));
+        fb.dataset.found = String(fi);
+        top.append(fb);
+      }
+    }
+    const cols = document.createElement("div");
+    cols.className = "sol-cols";
+    for (let c = 0; c < 7; c++) {
+      const colEl = document.createElement("div");
+      colEl.className = "sol-col";
+      colEl.dataset.col = String(c);
+      const col = tableau[c];
+      if (!col.length) {
+        const slot = document.createElement("button");
+        slot.type = "button";
+        slot.className = "sol-slot";
+        slot.textContent = "King";
+        slot.dataset.col = String(c);
+        slot.dataset.slot = "king";
+        slot.onclick = () => onEmpty(c);
+        colEl.append(slot);
+      } else {
+        let prevUp = false;
+        col.forEach((card, i) => {
+          let margin = "0";
+          if (i > 0) margin = (!card.up || !prevUp) ? "0.22rem" : "-3.45rem";
+          prevUp = card.up;
+          const picked = sel && sel.kind === "tab" && sel.col === c && i >= sel.index;
+          const btn = cardButton(card, picked, margin, () => onCard(c, i));
+          btn.dataset.col = String(c);
+          btn.dataset.index = String(i);
+          colEl.append(btn);
+        });
+      }
+      cols.append(colEl);
+    }
+    board.append(top, cols);
+  }
+  paint();
+  wrap.append(note, board, again);
+  goGame("Solitaire", "Tap a card, then tap where it goes. Draw takes one.", wrap);
+}
+
+const BLOCK_SHAPES = [
+  [[1]],
+  [[1, 1]],
+  [[1], [1]],
+  [[1, 1, 1]],
+  [[1], [1], [1]],
+  [[1, 1], [1, 1]],
+  [[1, 1, 1, 1]],
+  [[1], [1], [1], [1]],
+  [[1, 1, 1], [1, 0, 0]],
+  [[1, 1, 1], [0, 0, 1]],
+  [[1, 0, 0], [1, 1, 1]],
+  [[0, 0, 1], [1, 1, 1]],
+  [[1, 1, 0], [0, 1, 1]],
+  [[0, 1, 1], [1, 1, 0]],
+  [[1, 1], [1, 0], [1, 0]],
+  [[1, 1], [0, 1], [0, 1]],
+  [[1, 0], [1, 0], [1, 1]],
+  [[0, 1], [0, 1], [1, 1]],
+  [[1, 1, 1], [0, 1, 0]],
+  [[0, 1, 0], [1, 1, 1]],
+  [[1, 0], [1, 1], [1, 0]],
+  [[0, 1], [1, 1], [0, 1]],
+  [[1, 1, 1, 1, 1]],
+  [[1], [1], [1], [1], [1]],
+  [[1, 1, 1], [1, 1, 1]]
+];
+const BLOCK_COLORS = ["#e0b15a", "#d98978", "#7fa37a", "#8aa7cf", "#b89bc9", "#d7a06a"];
+
+function blocksView() {
+  const grid = Array.from({ length: 8 }, () => Array(8).fill(0));
+  let pieces = [null, null, null];
+  let picked = -1;
+  let over = false;
+  let colorN = 0;
+  const wrap = document.createElement("div");
+  const board = document.createElement("div");
+  board.className = "blk-grid";
+  const pieceRow = document.createElement("div");
+  pieceRow.className = "blk-pieces";
+  const note = document.createElement("p");
+  note.className = "lead";
+  const again = document.createElement("button");
+  again.className = "choice";
+  again.type = "button";
+  again.textContent = "New game";
+  again.onclick = () => blocksView();
+  function copyShape(shape) {
+    return shape.map((row) => row.slice());
+  }
+  function randomPiece() {
+    const shape = copyShape(BLOCK_SHAPES[Math.floor(Math.random() * BLOCK_SHAPES.length)]);
+    const color = BLOCK_COLORS[colorN % BLOCK_COLORS.length];
+    colorN++;
+    return { shape: shape, color: color };
+  }
+  function dealPieces() {
+    pieces = [randomPiece(), randomPiece(), randomPiece()];
+    const small = pieces.some((p) => p.shape.reduce((n, row) => n + row.reduce((a, v) => a + v, 0), 0) <= 3);
+    if (!small) pieces[0] = { shape: [[1, 1], [1, 0]], color: pieces[0].color };
+    picked = -1;
+  }
+  function noMoves() {
+    const left = pieces.filter(Boolean);
+    if (!left.length) return false;
+    return left.every((p) => !blockAnyFit(grid, p.shape));
+  }
+  function paint() {
+    board.textContent = "";
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "blk";
+        cell.dataset.r = String(r);
+        cell.dataset.c = String(c);
+        if (grid[r][c]) cell.style.background = grid[r][c];
+        cell.onclick = () => placeAt(r, c);
+        board.append(cell);
+      }
+    }
+    pieceRow.textContent = "";
+    pieces.forEach((piece, i) => {
+      if (!piece) {
+        const blank = document.createElement("div");
+        blank.className = "blk-empty";
+        pieceRow.append(blank);
+        return;
+      }
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "blk-piece" + (picked === i ? " picked" : "");
+      b.dataset.piece = String(i);
+      const mini = document.createElement("div");
+      mini.className = "blk-mini";
+      const width = Math.max(...piece.shape.map((row) => row.length));
+      mini.style.gridTemplateColumns = "repeat(" + width + ", 2.15rem)";
+      piece.shape.forEach((row) => {
+        for (let c = 0; c < width; c++) {
+          const dot = document.createElement("div");
+          dot.className = "blk-dot" + (row[c] ? " on" : "");
+          if (row[c]) dot.style.setProperty("--fill", piece.color);
+          mini.append(dot);
+        }
+      });
+      b.append(mini);
+      b.onclick = () => {
+        if (over) return;
+        picked = picked === i ? -1 : i;
+        note.textContent = "";
+        paint();
+      };
+      pieceRow.append(b);
+    });
+  }
+  function placeAt(r, c) {
+    if (over) return;
+    if (picked < 0 || !pieces[picked]) return;
+    const piece = pieces[picked];
+    if (!blockFitsAt(grid, piece.shape, r, c)) {
+      note.textContent = "Try again";
+      return;
+    }
+    for (let rr = 0; rr < piece.shape.length; rr++) {
+      for (let cc = 0; cc < piece.shape[rr].length; cc++) {
+        if (piece.shape[rr][cc]) grid[r + rr][c + cc] = piece.color;
+      }
+    }
+    pieces[picked] = null;
+    picked = -1;
+    const cleared = blockClearLines(grid);
+    if (cleared) celebrate("Nice!");
+    if (pieces.every((p) => !p)) dealPieces();
+    if (noMoves()) {
+      over = true;
+      note.textContent = "No more moves";
+      $("#plead").textContent = "No more moves. Tap New game when you want.";
+    } else {
+      note.textContent = "";
+    }
+    paint();
+  }
+  dealPieces();
+  paint();
+  wrap.append(board, pieceRow, note, again);
+  goGame("Blocks", "Tap a block, then tap the square for its top left corner.", wrap);
 }
 
 function soon(name) {
